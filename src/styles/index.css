@@ -1,0 +1,21 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  background: #08080c;
+  color: #e0e0e0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: #00ff88; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+input, textarea, select, button { font-family: inherit; outline: none; }
+button { border: none; }
+
+::selection { background: rgba(0, 255, 136, 0.2); }
+
+@media (max-width: 768px) {
+  body { font-size: 14px; }
+}
