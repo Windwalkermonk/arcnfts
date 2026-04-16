@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react';
-import { Contract, ContractFactory, parseEther, keccak256, toUtf8Bytes, randomBytes, hexlify } from 'ethers';
+import { Contract, ContractFactory, parseUnits, keccak256, toUtf8Bytes, randomBytes, hexlify } from 'ethers';
 import type { JsonRpcSigner } from 'ethers';
 import { NFT_FACTORY_ABI, NFT_COLLECTION_ABI } from '../config/abis';
 import { NFT_FACTORY_BYTECODE } from '../config/bytecodes';
@@ -32,6 +32,8 @@ export function Create({ walletAddress, signer }: CreateProps) {
   const [hiddenURI, setHiddenURI] = useState('');
   const [baseURI, setBaseURI] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [royaltyPercent, setRoyaltyPercent] = useState('5');
+  const [royaltyRecipient, setRoyaltyRecipient] = useState('');
 
   const canNext = () => {
     if (step === 0) return name && symbol && maxSupply;
@@ -62,7 +64,9 @@ export function Create({ walletAddress, signer }: CreateProps) {
       // Step 2: Create collection via factory
       setDeployStatus('Creating your NFT collection...');
       const factory = new Contract(factoryAddr, NFT_FACTORY_ABI, signer);
-      const priceWei = parseEther(mintPrice || '0');
+      const priceWei = parseUnits(mintPrice || '0', 18);
+      const royaltyAddr = royaltyRecipient || walletAddress;
+      const royaltyBps = Math.round(parseFloat(royaltyPercent || '0') * 100); // 5% = 500 bps
 
       const tx = await factory.createCollection(
         name,
@@ -70,6 +74,8 @@ export function Create({ walletAddress, signer }: CreateProps) {
         BigInt(maxSupply),
         priceWei,
         description,
+        royaltyAddr,
+        royaltyBps,
       );
 
       const receipt = await tx.wait();
@@ -174,6 +180,7 @@ export function Create({ walletAddress, signer }: CreateProps) {
             <div style={styles.previewDivider} />
             <PreviewRow label="Supply" value={maxSupply ? Number(maxSupply).toLocaleString() : '—'} />
             <PreviewRow label="Mint Price" value={mintPrice ? `${mintPrice} USDC` : mintPrice === '' ? '—' : 'Free'} />
+            <PreviewRow label="Royalty" value={royaltyPercent ? `${royaltyPercent}%` : '0%'} />
             <PreviewRow label="Encrypted Reveal" value={enableReveal ? '🔐 Yes' : 'No'} />
             <div style={styles.previewDivider} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -227,6 +234,13 @@ export function Create({ walletAddress, signer }: CreateProps) {
                 <div style={styles.infoBox}>
                   <p style={{ fontSize: 13, color: '#888' }}>💡 Mint price is paid in USDC (Arc native gas token). Set to 0 for free mints.</p>
                 </div>
+                <div style={{ height: 1, background: '#1a1a1a', margin: '4px 0' }} />
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Royalties (ERC-2981)</h3>
+                <Field label="Royalty %" placeholder="e.g. 5" value={royaltyPercent} onChange={(v) => setRoyaltyPercent(v.replace(/[^0-9.]/g, ''))} />
+                <Field label="Royalty Recipient (leave empty = your wallet)" placeholder="0x..." value={royaltyRecipient} onChange={setRoyaltyRecipient} />
+                <div style={styles.infoBox}>
+                  <p style={{ fontSize: 13, color: '#888' }}>💰 Royalty is paid to the recipient on every secondary sale. Standard is 5-10%.</p>
+                </div>
               </div>
             )}
 
@@ -267,6 +281,8 @@ export function Create({ walletAddress, signer }: CreateProps) {
                   <ReviewRow label="Max Supply" value={Number(maxSupply).toLocaleString()} />
                   <ReviewRow label="Mint Price" value={mintPrice === '0' || mintPrice === '' ? 'Free' : `${mintPrice} USDC`} />
                   <ReviewRow label="Description" value={description || '—'} />
+                  <ReviewRow label="Royalty" value={royaltyPercent ? `${royaltyPercent}%` : '0%'} />
+                  <ReviewRow label="Royalty Recipient" value={royaltyRecipient || walletAddress || 'Your wallet'} />
                   <ReviewRow label="Encrypted Reveal" value={enableReveal ? 'Yes' : 'No'} />
                 </div>
                 {!getFactoryAddress() && (

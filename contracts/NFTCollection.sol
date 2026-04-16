@@ -2,10 +2,11 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract NFTCollection is ERC721, Ownable {
+contract NFTCollection is ERC721, ERC2981, Ownable {
     using Strings for uint256;
 
     uint256 public maxSupply;
@@ -26,11 +27,16 @@ contract NFTCollection is ERC721, Ownable {
         uint256 maxSupply_,
         uint256 mintPrice_,
         string memory description_,
-        address creator_
+        address creator_,
+        address royaltyRecipient_,
+        uint96 royaltyBps_
     ) ERC721(name_, symbol_) Ownable(creator_) {
         maxSupply = maxSupply_;
         mintPrice = mintPrice_;
         collectionDescription = description_;
+        if (royaltyRecipient_ != address(0)) {
+            _setDefaultRoyalty(royaltyRecipient_, royaltyBps_);
+        }
     }
 
     function configure(string calldata hiddenURI_, bytes32 commitHash_) external onlyOwner {
@@ -70,6 +76,10 @@ contract NFTCollection is ERC721, Ownable {
             return string.concat(_baseTokenURI, tokenId.toString(), ".json");
         }
         return "";
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC2981) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 
     function withdraw() external onlyOwner {

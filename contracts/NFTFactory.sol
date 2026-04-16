@@ -13,10 +13,13 @@ contract NFTFactory {
         string calldata symbol_,
         uint256 maxSupply_,
         uint256 mintPrice_,
-        string calldata description_
+        string calldata description_,
+        address royaltyRecipient_,
+        uint96 royaltyBps_
     ) external returns (address) {
         NFTCollection c = new NFTCollection(
-            name_, symbol_, maxSupply_, mintPrice_, description_, msg.sender
+            name_, symbol_, maxSupply_, mintPrice_, description_,
+            msg.sender, royaltyRecipient_, royaltyBps_
         );
         address addr = address(c);
         allCollections.push(addr);

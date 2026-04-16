@@ -1,6 +1,6 @@
 import { useState, useEffect, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
-import { Contract, JsonRpcProvider, formatEther } from 'ethers';
+import { Contract, JsonRpcProvider, formatEther, formatUnits } from 'ethers';
 import type { JsonRpcSigner } from 'ethers';
 import { ARC_TESTNET } from '../config/network';
 import { NFT_COLLECTION_ABI } from '../config/abis';
@@ -86,6 +86,7 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
 
   const priceFmt = info.mintPrice === 0n ? 'Free' : `${formatEther(info.mintPrice)} USDC`;
   const totalCost = info.mintPrice === 0n ? 'Free' : `${formatEther(info.mintPrice * BigInt(qty))} USDC`;
+  const ownerShort = `${info.owner.slice(0, 6)}...${info.owner.slice(-4)}`;
   const remaining = info.maxSupply - info.totalMinted;
   const pct = Number(info.maxSupply) > 0 ? Math.round((Number(info.totalMinted) / Number(info.maxSupply)) * 100) : 0;
   const img = localStorage.getItem(`divarc_img_${address}`);
@@ -101,7 +102,8 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
           <div style={styles.infoCard}>
             <h3 style={{ fontSize: 12, fontWeight: 500, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Details</h3>
             <InfoRow label="Contract" value={`${address!.slice(0, 8)}...${address!.slice(-6)}`} />
-            <InfoRow label="Standard" value="ERC-721" />
+            <InfoRow label="Owner" value={ownerShort} />
+            <InfoRow label="Standard" value="ERC-721 + ERC-2981" />
             <InfoRow label="Network" value="Arc Testnet" />
             {info.hasCommit && <InfoRow label="Encrypted Reveal" value={info.revealed ? '✅ Revealed' : '🔐 Hidden'} />}
             <div style={{ marginTop: 12 }}>
