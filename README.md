@@ -312,6 +312,51 @@ arcnfts/
 
 ---
 
+## Security Considerations
+
+- **Commit-Reveal is binding** — once committed, the creator cannot change the metadata hash without deploying a new collection. This protects buyers from bait-and-switch.
+- **Royalty is immutable** — set at creation time via ERC-2981. Cannot be changed after deploy.
+- **No admin backdoors** — `Ownable` only controls `reveal()` and `withdraw()`. The owner cannot pause minting, change prices, or modify supply after deployment.
+- **Factory is permissionless** — anyone can deploy a collection. No whitelisting required.
+- **Private keys stay in your wallet** — the app never requests or stores private keys. All transactions are signed client-side.
+
+---
+
+## Tips for Creators
+
+- **Set royalty to 5-10%** — industry standard. Too high and marketplaces may ignore it.
+- **Use IPFS for metadata** — decentralized storage ensures your art lives forever. Pin with [Pinata](https://pinata.cloud) or [nft.storage](https://nft.storage).
+- **Test on Arc Testnet first** — get free USDC from [faucet.circle.com](https://faucet.circle.com) and deploy a test collection before going live.
+- **Encrypted Reveal tip** — upload a single placeholder image as your hidden URI. After minting closes, reveal the real art. This builds hype and prevents sniping.
+- **Share your mint page** — every collection gets a unique URL at `/collection/0x...`. Share it on social media to drive mints.
+
+---
+
+## Roadmap
+
+- [x] NFT Collection Factory (ERC-721)
+- [x] ERC-2981 Royalties
+- [x] Encrypted Reveal (Commit-Reveal)
+- [x] Auto-deploy factory (no setup needed)
+- [x] Mint page per collection
+- [ ] IPFS upload integration (drag & drop art)
+- [ ] ERC-721A batch minting (gas optimization)
+- [ ] Collection analytics dashboard
+- [ ] Secondary marketplace integration
+- [ ] Mainnet deployment
+
+---
+
+## Contributing
+
+1. Fork the repo
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
 ## License
 
 MIT
