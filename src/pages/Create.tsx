@@ -129,7 +129,7 @@ export function Create({ walletAddress, signer }: CreateProps) {
             <span style={{ fontSize: 13, color: '#00ff88', fontFamily: 'monospace', wordBreak: 'break-all' }}>{deployedAddress}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'center' }}>
-            <a href={`https://testnet.arc.network/address/${deployedAddress}`} target="_blank" rel="noreferrer" style={styles.linkBtn}>
+            <a href={`https://testnet.arcscan.app/address/${deployedAddress}`} target="_blank" rel="noreferrer" style={styles.linkBtn}>
               View on Explorer ↗
             </a>
             <a href={`/collection/${deployedAddress}`} style={styles.primaryBtn}>

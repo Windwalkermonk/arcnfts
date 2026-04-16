@@ -107,7 +107,7 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
             <InfoRow label="Network" value="Arc Testnet" />
             {info.hasCommit && <InfoRow label="Encrypted Reveal" value={info.revealed ? '✅ Revealed' : '🔐 Hidden'} />}
             <div style={{ marginTop: 12 }}>
-              <a href={`https://testnet.arc.network/address/${address}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#00ff88' }}>
+              <a href={`https://testnet.arcscan.app/address/${address}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#00ff88' }}>
                 View on Explorer ↗
               </a>
             </div>
