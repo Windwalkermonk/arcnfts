@@ -36,7 +36,7 @@ export function useWallet() {
             chainId: ARC_TESTNET.chainIdHex,
             chainName: ARC_TESTNET.name,
             rpcUrls: [ARC_TESTNET.rpcUrl],
-            blockExplorerUrls: [ARC_TESTNET.blockExplorer],
+            blockExplorerUrls: ['https://testnet.arcscan.app/'],
             nativeCurrency: ARC_TESTNET.nativeCurrency,
           },
         ]);
