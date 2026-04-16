@@ -4,15 +4,7 @@ pragma solidity ^0.8.24;
 import "./NFTCollection.sol";
 
 contract NFTFactory {
-    event CollectionCreated(
-        address indexed collectionAddress,
-        string name,
-        string symbol,
-        uint256 maxSupply,
-        uint256 mintPrice,
-        bool hasEncryptedReveal,
-        address indexed creator
-    );
+    event CollectionCreated(address indexed collection, address indexed creator);
 
     address[] public allCollections;
 
@@ -21,34 +13,14 @@ contract NFTFactory {
         string calldata symbol_,
         uint256 maxSupply_,
         uint256 mintPrice_,
-        string calldata description_,
-        string calldata hiddenURI_,
-        bytes32 metadataCommitHash_
+        string calldata description_
     ) external returns (address) {
-        NFTCollection collection = new NFTCollection(
-            name_,
-            symbol_,
-            maxSupply_,
-            mintPrice_,
-            description_,
-            hiddenURI_,
-            metadataCommitHash_,
-            msg.sender
+        NFTCollection c = new NFTCollection(
+            name_, symbol_, maxSupply_, mintPrice_, description_, msg.sender
         );
-
-        address addr = address(collection);
+        address addr = address(c);
         allCollections.push(addr);
-
-        emit CollectionCreated(
-            addr,
-            name_,
-            symbol_,
-            maxSupply_,
-            mintPrice_,
-            metadataCommitHash_ != bytes32(0),
-            msg.sender
-        );
-
+        emit CollectionCreated(addr, msg.sender);
         return addr;
     }
 

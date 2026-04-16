@@ -2,15 +2,16 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect, type CSSProperties } from 'react';
 import { Contract, JsonRpcProvider } from 'ethers';
 import { ARC_TESTNET } from '../config/network';
-import { NFT_FACTORY_ABI } from '../config/abis';
+import { NFT_FACTORY_ABI, NFT_COLLECTION_ABI } from '../config/abis';
+
+const FACTORY_STORAGE_KEY = 'arcnfts_factory_address';
 
 interface CollectionInfo {
   address: string;
   name: string;
   symbol: string;
   maxSupply: string;
-  mintPrice: string;
-  hasEncryptedReveal: boolean;
+  totalMinted: string;
 }
 
 export function Home() {
@@ -18,37 +19,38 @@ export function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetch() {
-      if (!ARC_TESTNET.contracts.nftFactory) { setLoading(false); return; }
+    async function load() {
+      const factoryAddr = localStorage.getItem(FACTORY_STORAGE_KEY);
+      if (!factoryAddr) { setLoading(false); return; }
       try {
         const provider = new JsonRpcProvider(ARC_TESTNET.rpcUrl);
-        const factory = new Contract(ARC_TESTNET.contracts.nftFactory, NFT_FACTORY_ABI, provider);
-        const latest = await provider.getBlockNumber();
-        const from = Math.max(0, latest - 9000);
-        const events = await factory.queryFilter(factory.filters.CollectionCreated(), from, latest);
+        const factory = new Contract(factoryAddr, NFT_FACTORY_ABI, provider);
+        const addrs: string[] = await factory.getAllCollections();
 
-        const items: CollectionInfo[] = events.map((e) => {
-          const parsed = factory.interface.parseLog({ topics: [...e.topics], data: e.data })!;
-          return {
-            address: parsed.args.collectionAddress,
-            name: parsed.args.name,
-            symbol: parsed.args.symbol,
-            maxSupply: parsed.args.maxSupply.toString(),
-            mintPrice: parsed.args.mintPrice.toString(),
-            hasEncryptedReveal: parsed.args.hasEncryptedReveal,
-          };
-        });
-        setCollections(items);
+        const items: CollectionInfo[] = await Promise.all(
+          addrs.slice(-6).map(async (addr) => {
+            try {
+              const nft = new Contract(addr, NFT_COLLECTION_ABI, provider);
+              const [name, symbol, maxSupply, totalMinted] = await Promise.all([
+                nft.name(), nft.symbol(), nft.maxSupply(), nft.totalMinted(),
+              ]);
+              return { address: addr, name, symbol, maxSupply: maxSupply.toString(), totalMinted: totalMinted.toString() };
+            } catch {
+              return { address: addr, name: '?', symbol: '?', maxSupply: '0', totalMinted: '0' };
+            }
+          }),
+        );
+        setCollections(items.reverse());
       } catch (err) {
         console.error('Failed to fetch collections:', err);
       } finally {
         setLoading(false);
       }
     }
-    fetch();
+    load();
   }, []);
 
-  const recent = collections.slice(-3).reverse();
+  const recent = collections.slice(0, 3);
 
   return (
     <div style={styles.page}>
@@ -100,23 +102,30 @@ export function Home() {
         </div>
       </section>
 
-      {collections.length > 0 && (
+      {recent.length > 0 && (
         <section style={styles.section}>
           <div style={styles.sectionHeader}>
             <h2 style={styles.sectionTitle}>Recent Collections</h2>
             <Link to="/explore" style={styles.viewAll}>View all →</Link>
           </div>
           <div style={styles.grid}>
-            {recent.map((c) => (
-              <Link to={`/collection/${c.address}`} key={c.address} style={styles.card}>
-                <div style={styles.cardTop}>
-                  <span style={styles.cardSymbol}>{c.symbol}</span>
-                  {c.hasEncryptedReveal && <span style={styles.encBadge}>🔐 Encrypted</span>}
-                </div>
-                <h4 style={styles.cardName}>{c.name}</h4>
-                <p style={styles.cardMeta}>{c.maxSupply} items</p>
-              </Link>
-            ))}
+            {recent.map((c) => {
+              const img = localStorage.getItem(`divarc_img_${c.address}`);
+              return (
+                <Link to={`/collection/${c.address}`} key={c.address} style={styles.card}>
+                  <div style={styles.cardImage}>
+                    {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 28, color: '#333' }}>◆</span>}
+                  </div>
+                  <div style={{ padding: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{c.name}</h4>
+                      <span style={{ fontSize: 11, color: '#00ff88', fontWeight: 600 }}>{c.symbol}</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: '#555', marginTop: 4 }}>{c.totalMinted}/{c.maxSupply} minted</p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
@@ -151,10 +160,6 @@ const styles: Record<string, CSSProperties> = {
   sectionTitle: { fontSize: 16, fontWeight: 600, color: '#fff' },
   viewAll: { fontSize: 13, color: '#555', textDecoration: 'none' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 },
-  card: { background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, padding: 22, textDecoration: 'none', transition: 'border-color 0.2s' },
-  cardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  cardSymbol: { fontSize: 12, fontWeight: 600, color: '#00ff88', background: 'rgba(0,255,136,0.08)', padding: '3px 8px', borderRadius: 4 },
-  encBadge: { fontSize: 11, color: '#a78bfa' },
-  cardName: { fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 4 },
-  cardMeta: { fontSize: 12, color: '#555' },
+  card: { background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, overflow: 'hidden', textDecoration: 'none', transition: 'border-color 0.2s' },
+  cardImage: { width: '100%', aspectRatio: '1.4', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' },
 };

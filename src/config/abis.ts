@@ -1,12 +1,13 @@
 export const NFT_FACTORY_ABI = [
-  'function createCollection(string calldata name_, string calldata symbol_, uint256 maxSupply_, uint256 mintPrice_, string calldata description_, string calldata hiddenURI_, bytes32 metadataCommitHash_) external returns (address)',
+  'function createCollection(string calldata name_, string calldata symbol_, uint256 maxSupply_, uint256 mintPrice_, string calldata description_) external returns (address)',
   'function getAllCollections() external view returns (address[])',
   'function getCollectionCount() external view returns (uint256)',
-  'event CollectionCreated(address indexed collectionAddress, string name, string symbol, uint256 maxSupply, uint256 mintPrice, bool hasEncryptedReveal, address indexed creator)',
+  'event CollectionCreated(address indexed collection, address indexed creator)',
 ];
 
 export const NFT_COLLECTION_ABI = [
   'function mint(uint256 quantity) external payable',
+  'function configure(string calldata hiddenURI_, bytes32 commitHash_) external',
   'function reveal(string calldata baseURI_, bytes32 salt_) external',
   'function withdraw() external',
   'function name() view returns (string)',

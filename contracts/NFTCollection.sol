@@ -12,18 +12,13 @@ contract NFTCollection is ERC721, Ownable {
     uint256 public mintPrice;
     uint256 public totalMinted;
     string public collectionDescription;
-
-    // Encrypted reveal: metadata is hidden until owner calls reveal()
     bool public revealed;
     string private _baseTokenURI;
     string private _hiddenURI;
-
-    // Encrypted metadata hash (commit-reveal pattern)
     bytes32 public metadataCommitHash;
 
     event Minted(address indexed to, uint256 indexed tokenId);
     event Revealed(string baseURI);
-    event MetadataCommitted(bytes32 commitHash);
 
     constructor(
         string memory name_,
@@ -31,16 +26,17 @@ contract NFTCollection is ERC721, Ownable {
         uint256 maxSupply_,
         uint256 mintPrice_,
         string memory description_,
-        string memory hiddenURI_,
-        bytes32 metadataCommitHash_,
         address creator_
     ) ERC721(name_, symbol_) Ownable(creator_) {
         maxSupply = maxSupply_;
         mintPrice = mintPrice_;
         collectionDescription = description_;
+    }
+
+    function configure(string calldata hiddenURI_, bytes32 commitHash_) external onlyOwner {
+        require(totalMinted == 0, "Already minting");
         _hiddenURI = hiddenURI_;
-        metadataCommitHash = metadataCommitHash_;
-        revealed = false;
+        metadataCommitHash = commitHash_;
     }
 
     function mint(uint256 quantity) external payable {
@@ -54,7 +50,6 @@ contract NFTCollection is ERC721, Ownable {
         }
     }
 
-    // Owner reveals real metadata — verifiable against commit hash
     function reveal(string calldata baseURI_, bytes32 salt_) external onlyOwner {
         require(!revealed, "Already revealed");
         require(
@@ -68,10 +63,13 @@ contract NFTCollection is ERC721, Ownable {
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
-        if (!revealed) {
+        if (!revealed && bytes(_hiddenURI).length > 0) {
             return _hiddenURI;
         }
-        return string.concat(_baseTokenURI, tokenId.toString(), ".json");
+        if (bytes(_baseTokenURI).length > 0) {
+            return string.concat(_baseTokenURI, tokenId.toString(), ".json");
+        }
+        return "";
     }
 
     function withdraw() external onlyOwner {

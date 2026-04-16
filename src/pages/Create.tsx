@@ -1,8 +1,14 @@
 import { useState, type CSSProperties } from 'react';
-import { Contract, parseEther, keccak256, toUtf8Bytes, randomBytes, hexlify } from 'ethers';
+import { Contract, ContractFactory, parseEther, keccak256, toUtf8Bytes, randomBytes, hexlify } from 'ethers';
 import type { JsonRpcSigner } from 'ethers';
-import { ARC_TESTNET } from '../config/network';
-import { NFT_FACTORY_ABI } from '../config/abis';
+import { NFT_FACTORY_ABI, NFT_COLLECTION_ABI } from '../config/abis';
+import { NFT_FACTORY_BYTECODE } from '../config/bytecodes';
+
+const FACTORY_STORAGE_KEY = 'arcnfts_factory_address';
+
+function getFactoryAddress(): string | null {
+  return localStorage.getItem(FACTORY_STORAGE_KEY);
+}
 
 interface CreateProps {
   walletAddress: string | null;
@@ -14,6 +20,7 @@ const STEPS = ['Collection Details', 'Mint Settings', 'Encrypted Reveal', 'Revie
 export function Create({ walletAddress, signer }: CreateProps) {
   const [step, setStep] = useState(0);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [deployStatus, setDeployStatus] = useState('');
   const [deployedAddress, setDeployedAddress] = useState<string | null>(null);
 
   const [name, setName] = useState('');
@@ -21,14 +28,14 @@ export function Create({ walletAddress, signer }: CreateProps) {
   const [description, setDescription] = useState('');
   const [maxSupply, setMaxSupply] = useState('');
   const [mintPrice, setMintPrice] = useState('');
-  const [enableReveal, setEnableReveal] = useState(true);
+  const [enableReveal, setEnableReveal] = useState(false);
   const [hiddenURI, setHiddenURI] = useState('');
   const [baseURI, setBaseURI] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const canNext = () => {
     if (step === 0) return name && symbol && maxSupply;
-    if (step === 1) return mintPrice;
+    if (step === 1) return mintPrice !== '';
     return true;
   };
 
@@ -37,27 +44,24 @@ export function Create({ walletAddress, signer }: CreateProps) {
       alert('Connect your wallet first');
       return;
     }
-    if (!ARC_TESTNET.contracts.nftFactory) {
-      alert('NFTFactory not deployed yet. Deploy contracts first.');
-      return;
-    }
 
     setIsDeploying(true);
     try {
-      const factory = new Contract(ARC_TESTNET.contracts.nftFactory, NFT_FACTORY_ABI, signer);
-
-      // Generate commit hash for encrypted reveal
-      let commitHash = '0x' + '0'.repeat(64);
-      const salt = hexlify(randomBytes(32));
-
-      if (enableReveal && baseURI) {
-        const packed = toUtf8Bytes(baseURI + salt);
-        commitHash = keccak256(packed);
-        // Store salt locally so owner can reveal later
-        localStorage.setItem(`divarc_salt_${name}_${symbol}`, salt);
-        localStorage.setItem(`divarc_baseuri_${name}_${symbol}`, baseURI);
+      // Step 1: Ensure factory exists
+      let factoryAddr = getFactoryAddress();
+      if (!factoryAddr) {
+        setDeployStatus('Deploying NFT Factory (one-time setup)...');
+        const factoryFactory = new ContractFactory(NFT_FACTORY_ABI, NFT_FACTORY_BYTECODE, signer);
+        const deployed = await factoryFactory.deploy();
+        await deployed.waitForDeployment();
+        factoryAddr = await deployed.getAddress();
+        localStorage.setItem(FACTORY_STORAGE_KEY, factoryAddr);
+        console.log('Factory deployed at:', factoryAddr);
       }
 
+      // Step 2: Create collection via factory
+      setDeployStatus('Creating your NFT collection...');
+      const factory = new Contract(factoryAddr, NFT_FACTORY_ABI, signer);
       const priceWei = parseEther(mintPrice || '0');
 
       const tx = await factory.createCollection(
@@ -66,8 +70,6 @@ export function Create({ walletAddress, signer }: CreateProps) {
         BigInt(maxSupply),
         priceWei,
         description,
-        hiddenURI || 'ipfs://hidden',
-        commitHash,
       );
 
       const receipt = await tx.wait();
@@ -78,7 +80,23 @@ export function Create({ walletAddress, signer }: CreateProps) {
         })
         .find((e: { name: string } | null) => e?.name === 'CollectionCreated');
 
-      const addr = event?.args?.collectionAddress;
+      const addr = event?.args?.collection;
+
+      // Step 3: Configure encrypted reveal if enabled
+      if (addr && enableReveal && baseURI) {
+        setDeployStatus('Configuring encrypted reveal...');
+        const nft = new Contract(addr, NFT_COLLECTION_ABI, signer);
+        const salt = hexlify(randomBytes(32));
+        const packed = toUtf8Bytes(baseURI + salt);
+        const commitHash = keccak256(packed);
+
+        const cfgTx = await nft.configure(hiddenURI || 'ipfs://hidden', commitHash);
+        await cfgTx.wait();
+
+        localStorage.setItem(`divarc_salt_${name}_${symbol}`, salt);
+        localStorage.setItem(`divarc_baseuri_${name}_${symbol}`, baseURI);
+      }
+
       if (addr) {
         setDeployedAddress(addr);
         if (imagePreview) {
@@ -90,6 +108,7 @@ export function Create({ walletAddress, signer }: CreateProps) {
       alert('Deployment failed. Check console.');
     } finally {
       setIsDeploying(false);
+      setDeployStatus('');
     }
   };
 
@@ -103,8 +122,8 @@ export function Create({ walletAddress, signer }: CreateProps) {
           <div style={styles.addressBox}>
             <span style={{ fontSize: 13, color: '#00ff88', fontFamily: 'monospace', wordBreak: 'break-all' }}>{deployedAddress}</span>
           </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-            <a href={`${ARC_TESTNET.blockExplorer}/address/${deployedAddress}`} target="_blank" rel="noreferrer" style={styles.linkBtn}>
+          <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'center' }}>
+            <a href={`https://testnet.arc.network/address/${deployedAddress}`} target="_blank" rel="noreferrer" style={styles.linkBtn}>
               View on Explorer ↗
             </a>
             <a href={`/collection/${deployedAddress}`} style={styles.primaryBtn}>
@@ -154,7 +173,7 @@ export function Create({ walletAddress, signer }: CreateProps) {
             <p style={{ fontSize: 12, color: '#555', marginBottom: 14 }}>{symbol || 'SYMBOL'}</p>
             <div style={styles.previewDivider} />
             <PreviewRow label="Supply" value={maxSupply ? Number(maxSupply).toLocaleString() : '—'} />
-            <PreviewRow label="Mint Price" value={mintPrice ? `${mintPrice} ETH` : '—'} />
+            <PreviewRow label="Mint Price" value={mintPrice ? `${mintPrice} ETH` : mintPrice === '' ? '—' : 'Free'} />
             <PreviewRow label="Encrypted Reveal" value={enableReveal ? '🔐 Yes' : 'No'} />
             <div style={styles.previewDivider} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -204,7 +223,7 @@ export function Create({ walletAddress, signer }: CreateProps) {
 
             {step === 1 && (
               <div style={styles.fields}>
-                <Field label="Mint Price (ETH)" placeholder="e.g. 0.01" value={mintPrice} onChange={(v) => setMintPrice(v.replace(/[^0-9.]/g, ''))} />
+                <Field label="Mint Price (ETH)" placeholder="e.g. 0.01 (0 for free mint)" value={mintPrice} onChange={(v) => setMintPrice(v.replace(/[^0-9.]/g, ''))} />
                 <div style={styles.infoBox}>
                   <p style={{ fontSize: 13, color: '#888' }}>💡 Mint price is paid in ETH (Arc Testnet native currency). Set to 0 for free mints.</p>
                 </div>
@@ -246,10 +265,15 @@ export function Create({ walletAddress, signer }: CreateProps) {
                   <ReviewRow label="Name" value={name} />
                   <ReviewRow label="Symbol" value={symbol} />
                   <ReviewRow label="Max Supply" value={Number(maxSupply).toLocaleString()} />
-                  <ReviewRow label="Mint Price" value={`${mintPrice} ETH`} />
+                  <ReviewRow label="Mint Price" value={mintPrice === '0' || mintPrice === '' ? 'Free' : `${mintPrice} ETH`} />
                   <ReviewRow label="Description" value={description || '—'} />
                   <ReviewRow label="Encrypted Reveal" value={enableReveal ? 'Yes' : 'No'} />
                 </div>
+                {!getFactoryAddress() && (
+                  <div style={styles.infoBox}>
+                    <p style={{ fontSize: 13, color: '#888' }}>⚡ First launch on this browser — the platform contract will be deployed automatically. You'll sign 2 transactions instead of 1.</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -261,7 +285,7 @@ export function Create({ walletAddress, signer }: CreateProps) {
                 <button style={{ ...styles.nextBtn, opacity: canNext() ? 1 : 0.3 }} disabled={!canNext()} onClick={() => setStep(s => s + 1)}>Continue</button>
               ) : (
                 <button style={{ ...styles.deployBtn, opacity: isDeploying ? 0.5 : 1 }} disabled={isDeploying} onClick={handleDeploy}>
-                  {isDeploying ? 'Deploying...' : 'Deploy Collection'}
+                  {isDeploying ? (deployStatus || 'Deploying...') : 'Deploy Collection'}
                 </button>
               )}
             </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
-import { Contract, JsonRpcProvider, formatEther, parseEther } from 'ethers';
+import { Contract, JsonRpcProvider, formatEther } from 'ethers';
 import type { JsonRpcSigner } from 'ethers';
 import { ARC_TESTNET } from '../config/network';
 import { NFT_COLLECTION_ABI } from '../config/abis';
@@ -71,8 +71,6 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
         .find((e: { name: string } | null) => e?.name === 'Minted');
 
       setMintedId(event?.args?.tokenId?.toString() || 'unknown');
-
-      // Refresh
       const totalMinted = await nft.totalMinted();
       setInfo(prev => prev ? { ...prev, totalMinted } : prev);
     } catch (err) {
@@ -96,7 +94,6 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
   return (
     <div style={styles.page}>
       <div style={styles.layout}>
-        {/* Left: Image + Info */}
         <div>
           <div style={styles.imageBox}>
             {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} /> : <span style={{ fontSize: 64, color: '#333' }}>◆</span>}
@@ -108,14 +105,13 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
             <InfoRow label="Network" value="Arc Testnet" />
             {info.hasCommit && <InfoRow label="Encrypted Reveal" value={info.revealed ? '✅ Revealed' : '🔐 Hidden'} />}
             <div style={{ marginTop: 12 }}>
-              <a href={`${ARC_TESTNET.blockExplorer}/address/${address}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#00ff88' }}>
+              <a href={`https://testnet.arc.network/address/${address}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#00ff88' }}>
                 View on Explorer ↗
               </a>
             </div>
           </div>
         </div>
 
-        {/* Right: Mint */}
         <div>
           <div style={styles.mintCard}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
@@ -124,7 +120,6 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
             </div>
             {info.description && <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 20 }}>{info.description}</p>}
 
-            {/* Progress */}
             <div style={{ marginBottom: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{info.totalMinted.toString()} / {info.maxSupply.toString()}</span>
@@ -133,13 +128,11 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
               <div style={styles.bar}><div style={{ ...styles.barFill, width: `${pct}%` }} /></div>
             </div>
 
-            {/* Price */}
             <div style={styles.priceRow}>
               <span style={{ fontSize: 13, color: '#555' }}>Price per NFT</span>
               <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>{priceFmt}</span>
             </div>
 
-            {/* Qty selector */}
             {remaining > 0n && (
               <>
                 <div style={styles.qtyRow}>
@@ -157,7 +150,6 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
               </>
             )}
 
-            {/* Mint button */}
             {remaining > 0n ? (
               <button style={{ ...styles.mintBtn, opacity: !walletAddress || isMinting ? 0.4 : 1 }} disabled={!walletAddress || isMinting} onClick={handleMint}>
                 {!walletAddress ? 'Connect Wallet to Mint' : isMinting ? 'Minting...' : `Mint ${qty} NFT${qty > 1 ? 's' : ''}`}
@@ -172,13 +164,12 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
               </div>
             )}
 
-            {/* Owner reveal button */}
             {isOwner && info.hasCommit && !info.revealed && (
               <button style={styles.revealBtn} onClick={async () => {
                 const storedURI = localStorage.getItem(`divarc_baseuri_${info.name}_${info.symbol}`);
                 const storedSalt = localStorage.getItem(`divarc_salt_${info.name}_${info.symbol}`);
                 if (!storedURI || !storedSalt || !signer) {
-                  alert('Reveal data not found in this browser. You need the same browser you used to create.');
+                  alert('Reveal data not found. Use the same browser you created the collection with.');
                   return;
                 }
                 try {

@@ -4,13 +4,14 @@ import { Contract, JsonRpcProvider } from 'ethers';
 import { ARC_TESTNET } from '../config/network';
 import { NFT_FACTORY_ABI, NFT_COLLECTION_ABI } from '../config/abis';
 
+const FACTORY_STORAGE_KEY = 'arcnfts_factory_address';
+
 interface MyCollection {
   address: string;
   name: string;
   symbol: string;
   maxSupply: string;
   totalMinted: string;
-  isOwner: boolean;
 }
 
 interface PortfolioProps {
@@ -23,46 +24,26 @@ export function Portfolio({ walletAddress }: PortfolioProps) {
 
   useEffect(() => {
     async function load() {
-      if (!walletAddress || !ARC_TESTNET.contracts.nftFactory) { setLoading(false); return; }
+      const factoryAddr = localStorage.getItem(FACTORY_STORAGE_KEY);
+      if (!walletAddress || !factoryAddr) { setLoading(false); return; }
       try {
         const provider = new JsonRpcProvider(ARC_TESTNET.rpcUrl);
-        const factory = new Contract(ARC_TESTNET.contracts.nftFactory, NFT_FACTORY_ABI, provider);
-        const latest = await provider.getBlockNumber();
-        const from = Math.max(0, latest - 9000);
-        const events = await factory.queryFilter(factory.filters.CollectionCreated(), from, latest);
+        const factory = new Contract(factoryAddr, NFT_FACTORY_ABI, provider);
+        const addrs: string[] = await factory.getAllCollections();
 
         const items: MyCollection[] = [];
-        for (const e of events) {
-          const parsed = factory.interface.parseLog({ topics: [...e.topics], data: e.data })!;
-          const addr = parsed.args.collectionAddress;
-          const creator = parsed.args.creator;
-          const isOwner = creator.toLowerCase() === walletAddress.toLowerCase();
-
-          if (isOwner) {
-            try {
-              const nft = new Contract(addr, NFT_COLLECTION_ABI, provider);
-              const totalMinted = await nft.totalMinted();
-              items.push({
-                address: addr,
-                name: parsed.args.name,
-                symbol: parsed.args.symbol,
-                maxSupply: parsed.args.maxSupply.toString(),
-                totalMinted: totalMinted.toString(),
-                isOwner: true,
-              });
-            } catch {
-              items.push({
-                address: addr,
-                name: parsed.args.name,
-                symbol: parsed.args.symbol,
-                maxSupply: parsed.args.maxSupply.toString(),
-                totalMinted: '0',
-                isOwner: true,
-              });
+        for (const addr of addrs) {
+          try {
+            const nft = new Contract(addr, NFT_COLLECTION_ABI, provider);
+            const owner = await nft.owner();
+            if (owner.toLowerCase() === walletAddress.toLowerCase()) {
+              const [name, symbol, maxSupply, totalMinted] = await Promise.all([
+                nft.name(), nft.symbol(), nft.maxSupply(), nft.totalMinted(),
+              ]);
+              items.push({ address: addr, name, symbol, maxSupply: maxSupply.toString(), totalMinted: totalMinted.toString() });
             }
-          }
+          } catch { /* skip */ }
         }
-
         setCollections(items.reverse());
       } catch (err) {
         console.error('Failed to load portfolio:', err);

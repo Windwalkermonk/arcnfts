@@ -4,6 +4,8 @@ import { Contract, JsonRpcProvider, formatEther } from 'ethers';
 import { ARC_TESTNET } from '../config/network';
 import { NFT_FACTORY_ABI, NFT_COLLECTION_ABI } from '../config/abis';
 
+const FACTORY_STORAGE_KEY = 'arcnfts_factory_address';
+
 interface CollectionDetail {
   address: string;
   name: string;
@@ -12,7 +14,7 @@ interface CollectionDetail {
   totalMinted: string;
   mintPrice: string;
   revealed: boolean;
-  hasEncryptedReveal: boolean;
+  hasCommit: boolean;
 }
 
 export function Explore() {
@@ -21,50 +23,32 @@ export function Explore() {
 
   useEffect(() => {
     async function load() {
-      if (!ARC_TESTNET.contracts.nftFactory) { setLoading(false); return; }
+      const factoryAddr = localStorage.getItem(FACTORY_STORAGE_KEY);
+      if (!factoryAddr) { setLoading(false); return; }
       try {
         const provider = new JsonRpcProvider(ARC_TESTNET.rpcUrl);
-        const factory = new Contract(ARC_TESTNET.contracts.nftFactory, NFT_FACTORY_ABI, provider);
-        const latest = await provider.getBlockNumber();
-        const from = Math.max(0, latest - 9000);
-        const events = await factory.queryFilter(factory.filters.CollectionCreated(), from, latest);
+        const factory = new Contract(factoryAddr, NFT_FACTORY_ABI, provider);
+        const addrs: string[] = await factory.getAllCollections();
 
         const items: CollectionDetail[] = await Promise.all(
-          events.map(async (e) => {
-            const parsed = factory.interface.parseLog({ topics: [...e.topics], data: e.data })!;
-            const addr = parsed.args.collectionAddress;
-
+          addrs.map(async (addr) => {
             try {
               const nft = new Contract(addr, NFT_COLLECTION_ABI, provider);
-              const [totalMinted, revealed] = await Promise.all([
-                nft.totalMinted(),
-                nft.revealed(),
+              const [name, symbol, maxSupply, totalMinted, mintPrice, revealed, commitHash] = await Promise.all([
+                nft.name(), nft.symbol(), nft.maxSupply(), nft.totalMinted(),
+                nft.mintPrice(), nft.revealed(), nft.metadataCommitHash(),
               ]);
               return {
-                address: addr,
-                name: parsed.args.name,
-                symbol: parsed.args.symbol,
-                maxSupply: parsed.args.maxSupply.toString(),
-                totalMinted: totalMinted.toString(),
-                mintPrice: parsed.args.mintPrice.toString(),
-                revealed,
-                hasEncryptedReveal: parsed.args.hasEncryptedReveal,
+                address: addr, name, symbol,
+                maxSupply: maxSupply.toString(), totalMinted: totalMinted.toString(),
+                mintPrice: mintPrice.toString(), revealed,
+                hasCommit: commitHash !== '0x' + '0'.repeat(64),
               };
             } catch {
-              return {
-                address: addr,
-                name: parsed.args.name,
-                symbol: parsed.args.symbol,
-                maxSupply: parsed.args.maxSupply.toString(),
-                totalMinted: '0',
-                mintPrice: parsed.args.mintPrice.toString(),
-                revealed: false,
-                hasEncryptedReveal: parsed.args.hasEncryptedReveal,
-              };
+              return { address: addr, name: '?', symbol: '?', maxSupply: '0', totalMinted: '0', mintPrice: '0', revealed: false, hasCommit: false };
             }
           }),
         );
-
         setCollections(items.reverse());
       } catch (err) {
         console.error('Failed to load collections:', err);
@@ -102,7 +86,7 @@ export function Explore() {
               <Link to={`/collection/${c.address}`} key={c.address} style={styles.card}>
                 <div style={styles.cardImage}>
                   {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 32, color: '#333' }}>◆</span>}
-                  {c.hasEncryptedReveal && (
+                  {c.hasCommit && (
                     <div style={styles.encLabel}>{c.revealed ? '✅ Revealed' : '🔐 Hidden'}</div>
                   )}
                 </div>
