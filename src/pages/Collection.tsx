@@ -84,8 +84,8 @@ export function Collection({ walletAddress, signer }: CollectionProps) {
   if (loading) return <div style={styles.page}><p style={{ color: '#555', paddingTop: 120 }}>Loading collection...</p></div>;
   if (!info) return <div style={styles.page}><p style={{ color: '#555', paddingTop: 120 }}>Collection not found.</p></div>;
 
-  const priceFmt = info.mintPrice === 0n ? 'Free' : `${formatEther(info.mintPrice)} ETH`;
-  const totalCost = info.mintPrice === 0n ? 'Free' : `${formatEther(info.mintPrice * BigInt(qty))} ETH`;
+  const priceFmt = info.mintPrice === 0n ? 'Free' : `${formatEther(info.mintPrice)} USDC`;
+  const totalCost = info.mintPrice === 0n ? 'Free' : `${formatEther(info.mintPrice * BigInt(qty))} USDC`;
   const remaining = info.maxSupply - info.totalMinted;
   const pct = Number(info.maxSupply) > 0 ? Math.round((Number(info.totalMinted) / Number(info.maxSupply)) * 100) : 0;
   const img = localStorage.getItem(`divarc_img_${address}`);

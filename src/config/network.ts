@@ -5,9 +5,9 @@ export const ARC_TESTNET = {
   rpcUrl: 'https://rpc.quicknode.testnet.arc.network',
   blockExplorer: 'https://testnet.arc.network',
   nativeCurrency: {
-    name: 'ETH',
-    symbol: 'ETH',
-    decimals: 18,
+    name: 'USDC',
+    symbol: 'USDC',
+    decimals: 6,
   },
   contracts: {
     nftFactory: '', // filled after deploy

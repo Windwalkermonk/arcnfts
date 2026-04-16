@@ -79,7 +79,7 @@ export function Explore() {
         <div style={styles.grid}>
           {collections.map((c) => {
             const img = localStorage.getItem(`divarc_img_${c.address}`);
-            const priceFmt = c.mintPrice === '0' ? 'Free' : `${formatEther(c.mintPrice)} ETH`;
+            const priceFmt = c.mintPrice === '0' ? 'Free' : `${formatEther(c.mintPrice)} USDC`;
             const pct = Number(c.maxSupply) > 0 ? Math.round((Number(c.totalMinted) / Number(c.maxSupply)) * 100) : 0;
 
             return (

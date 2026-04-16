@@ -173,7 +173,7 @@ export function Create({ walletAddress, signer }: CreateProps) {
             <p style={{ fontSize: 12, color: '#555', marginBottom: 14 }}>{symbol || 'SYMBOL'}</p>
             <div style={styles.previewDivider} />
             <PreviewRow label="Supply" value={maxSupply ? Number(maxSupply).toLocaleString() : '—'} />
-            <PreviewRow label="Mint Price" value={mintPrice ? `${mintPrice} ETH` : mintPrice === '' ? '—' : 'Free'} />
+            <PreviewRow label="Mint Price" value={mintPrice ? `${mintPrice} USDC` : mintPrice === '' ? '—' : 'Free'} />
             <PreviewRow label="Encrypted Reveal" value={enableReveal ? '🔐 Yes' : 'No'} />
             <div style={styles.previewDivider} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -223,9 +223,9 @@ export function Create({ walletAddress, signer }: CreateProps) {
 
             {step === 1 && (
               <div style={styles.fields}>
-                <Field label="Mint Price (ETH)" placeholder="e.g. 0.01 (0 for free mint)" value={mintPrice} onChange={(v) => setMintPrice(v.replace(/[^0-9.]/g, ''))} />
+                <Field label="Mint Price (USDC)" placeholder="e.g. 0.01 (0 for free mint)" value={mintPrice} onChange={(v) => setMintPrice(v.replace(/[^0-9.]/g, ''))} />
                 <div style={styles.infoBox}>
-                  <p style={{ fontSize: 13, color: '#888' }}>💡 Mint price is paid in ETH (Arc Testnet native currency). Set to 0 for free mints.</p>
+                  <p style={{ fontSize: 13, color: '#888' }}>💡 Mint price is paid in USDC (Arc native gas token). Set to 0 for free mints.</p>
                 </div>
               </div>
             )}
@@ -265,7 +265,7 @@ export function Create({ walletAddress, signer }: CreateProps) {
                   <ReviewRow label="Name" value={name} />
                   <ReviewRow label="Symbol" value={symbol} />
                   <ReviewRow label="Max Supply" value={Number(maxSupply).toLocaleString()} />
-                  <ReviewRow label="Mint Price" value={mintPrice === '0' || mintPrice === '' ? 'Free' : `${mintPrice} ETH`} />
+                  <ReviewRow label="Mint Price" value={mintPrice === '0' || mintPrice === '' ? 'Free' : `${mintPrice} USDC`} />
                   <ReviewRow label="Description" value={description || '—'} />
                   <ReviewRow label="Encrypted Reveal" value={enableReveal ? 'Yes' : 'No'} />
                 </div>
