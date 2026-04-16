@@ -1,4 +1,4 @@
-# DivArc
+# ArcNFTs
 
 NFT Collection Launchpad for **ARC Network** — Create, deploy & mint NFT collections with encrypted reveal.
 

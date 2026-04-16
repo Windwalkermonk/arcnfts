@@ -16,7 +16,7 @@ export function Navbar({ walletAddress, isConnecting, onConnect, onDisconnect }:
     <nav style={styles.nav}>
       <Link to="/" style={styles.brand}>
         <span style={styles.logo}>◆</span>
-        <span style={styles.brandText}>DivArc</span>
+        <span style={styles.brandText}>ArcNFTs</span>
       </Link>
 
       <div style={styles.links}>
