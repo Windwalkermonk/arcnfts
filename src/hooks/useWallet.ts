@@ -6,6 +6,7 @@ interface WalletState {
   address: string | null;
   signer: JsonRpcSigner | null;
   isConnecting: boolean;
+  wrongNetwork: boolean;
 }
 
 export function useWallet() {
@@ -13,6 +14,7 @@ export function useWallet() {
     address: null,
     signer: null,
     isConnecting: false,
+    wrongNetwork: false,
   });
 
   const connect = useCallback(async () => {
@@ -21,13 +23,13 @@ export function useWallet() {
       return;
     }
 
-    setWallet((prev) => ({ ...prev, isConnecting: true }));
+    setWallet((prev) => ({ ...prev, isConnecting: true, wrongNetwork: false }));
 
     try {
       const provider = new BrowserProvider(window.ethereum);
       await provider.send('eth_requestAccounts', []);
 
-      // Always try to add Arc Testnet first, then switch
+      // Try to add Arc Testnet
       try {
         await provider.send('wallet_addEthereumChain', [
           {
@@ -39,35 +41,42 @@ export function useWallet() {
           },
         ]);
       } catch {
-        // Chain might already exist, try switch
+        // May already exist
       }
 
-      await provider.send('wallet_switchEthereumChain', [
-        { chainId: ARC_TESTNET.chainIdHex },
-      ]);
+      // Try to switch
+      try {
+        await provider.send('wallet_switchEthereumChain', [
+          { chainId: ARC_TESTNET.chainIdHex },
+        ]);
+      } catch {
+        // Switch may fail
+      }
 
-      // Re-create provider after chain switch to ensure correct network
+      // Wait a moment for chain switch to propagate
+      await new Promise(r => setTimeout(r, 500));
+
+      // Re-create provider and verify
       const freshProvider = new BrowserProvider(window.ethereum);
       const network = await freshProvider.getNetwork();
+      const currentChainId = Number(network.chainId);
 
-      if (Number(network.chainId) !== ARC_TESTNET.chainId) {
-        alert(`Please switch to Arc Testnet (Chain ID: ${ARC_TESTNET.chainId}) in your wallet.`);
-        setWallet({ address: null, signer: null, isConnecting: false });
+      if (currentChainId !== ARC_TESTNET.chainId) {
+        setWallet({ address: null, signer: null, isConnecting: false, wrongNetwork: true });
         return;
       }
 
       const signer = await freshProvider.getSigner();
       const address = await signer.getAddress();
-      setWallet({ address, signer, isConnecting: false });
+      setWallet({ address, signer, isConnecting: false, wrongNetwork: false });
     } catch (err) {
       console.error('Wallet connect failed:', err);
-      alert('Failed to connect. Please switch to Arc Testnet manually in your wallet.');
-      setWallet({ address: null, signer: null, isConnecting: false });
+      setWallet({ address: null, signer: null, isConnecting: false, wrongNetwork: false });
     }
   }, []);
 
   const disconnect = useCallback(() => {
-    setWallet({ address: null, signer: null, isConnecting: false });
+    setWallet({ address: null, signer: null, isConnecting: false, wrongNetwork: false });
   }, []);
 
   return { ...wallet, connect, disconnect };

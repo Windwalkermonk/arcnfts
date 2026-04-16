@@ -4,11 +4,12 @@ import type { CSSProperties } from 'react';
 interface NavbarProps {
   walletAddress: string | null;
   isConnecting: boolean;
+  wrongNetwork?: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
 }
 
-export function Navbar({ walletAddress, isConnecting, onConnect, onDisconnect }: NavbarProps) {
+export function Navbar({ walletAddress, isConnecting, wrongNetwork, onConnect, onDisconnect }: NavbarProps) {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
 
@@ -29,7 +30,11 @@ export function Navbar({ walletAddress, isConnecting, onConnect, onDisconnect }:
       </div>
 
       <div style={styles.right}>
-        {walletAddress ? (
+        {wrongNetwork ? (
+          <button onClick={onConnect} style={{ ...styles.connectBtn, background: '#ef4444' }}>
+            Wrong Network
+          </button>
+        ) : walletAddress ? (
           <button onClick={onDisconnect} style={styles.walletBtn}>
             {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
           </button>

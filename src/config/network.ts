@@ -7,7 +7,7 @@ export const ARC_TESTNET = {
   nativeCurrency: {
     name: 'USDC',
     symbol: 'USDC',
-    decimals: 6,
+    decimals: 18,
   },
   contracts: {
     nftFactory: '', // filled after deploy
